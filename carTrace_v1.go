@@ -402,12 +402,12 @@ func (t *MobileTraceChaincode) trannsferMobileHelper(stub shim.ChaincodeStubInte
 	// maintain indexes
 	ownersIndex := "owner~identifier"
 	// remove previous index
-	err = t.deleteIndex(stub, ownersIndex, []string{currentOwner, chassisNumber})
+	err = t.deleteIndex(stub, ownersIndex, []string{currentOwner, IMEINumber})
 	if err != nil {
 		return "", err
 	}
 	// create new index
-	err = t.createIndex(stub, ownersIndex, []string{newOwner, chassisNumber})
+	err = t.createIndex(stub, ownersIndex, []string{newOwner, IMEINumber})
 	if err != nil {
 		return "", err
 	}
