@@ -224,7 +224,7 @@ func (t *MobileTraceChaincode) initMobile(stub shim.ChaincodeStubInterface, args
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	//  ==== Index the vehicmobilele parts to enable assember & owner-based range queries, e.g. return all tata parts ====
+	//  ==== Index the mobile based on the owner
 	//  An 'index' is a normal key/value entry in state.
 	//  The key is a composite key, with the elements that you want to range query on listed first.
 	//  In our case, the composite key is based on indexName~assember~chassisNumber.
