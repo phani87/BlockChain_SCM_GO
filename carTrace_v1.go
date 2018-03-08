@@ -116,7 +116,7 @@ type MobileTraceChaincode struct {
 // @MODIFY_HERE add recall fields to vehicle JSON object
 type mobile struct {
 	ObjectType         string `json:"docType"` 
-	IMEINumber         string `json:"imeiNumber"` //the fieldtags are needed to keep case from bouncing around
+	IMEINumber         string `json:"imeiNumber"` 
 	Manufacturer       string `json:"manufacturer"`
 	Model              string `json:"model"`
 	AssemblyDate       int    `json:"assemblyDate"`
@@ -342,21 +342,21 @@ func (t *MobileTraceChaincode) getHistoryForRecord(stub shim.ChaincodeStubInterf
 // ===========================================================================================
 
 
-func (t *MobileTraceChaincode) transferVehicle(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *MobileTraceChaincode) transferMobile(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	//   0       1       3
 	// "name", "from", "to"
 	if len(args) < 3 {
 		return shim.Error("Incorrect number of arguments. Expecting 3")
 	}
 
-	chassisNumber := args[0]
+	IMEINumber := args[0]
 	currentOnwer := strings.ToLower(args[1])
 	newOwner := strings.ToLower(args[2])
-	fmt.Println("- start transferVehicle ", chassisNumber, currentOnwer, newOwner)
+	fmt.Println("- start transferVehicle ", IMEINumber, currentOnwer, newOwner)
 
 	// attempt to get the current vehicle object by serial number.
 	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
-	message, err := t.trannsferVehicleHelper(stub, chassisNumber, currentOnwer, newOwner)
+	message, err := t.trannsferMobileHelper(stub, chassisNumber, currentOnwer, newOwner)
 	if err != nil {
 		return shim.Error(message + err.Error())
 	} else if message != "" {
@@ -365,6 +365,99 @@ func (t *MobileTraceChaincode) transferVehicle(stub shim.ChaincodeStubInterface,
 
 	fmt.Println("- end transferVehicle (success)")
 	return shim.Success(nil)
+}
+
+// ===========================================================
+// trannsferVehicleHelper : helper method for transferVehicle
+// ===========================================================
+func (t *MobileTraceChaincode) trannsferMobileHelper(stub shim.ChaincodeStubInterface, chassisNumber string, currentOwner string, newOwner string) (string, error) {
+	// attempt to get the current vehicle object by serial number.
+	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
+	fmt.Println("Transfering vehicle with chassis number: " + IMEINumber + " To: " + newOwner)
+	vehicleAsBytes, err := stub.GetState(IMEINumber)
+	if err != nil {
+		return "Failed to get vehicle:", err
+	} else if vehicleAsBytes == nil {
+		return "Vehicle does not exist", err
+	}
+
+	vehicleToTransfer := vehicle{}
+	err = json.Unmarshal(vehicleAsBytes, &vehicleToTransfer) //unmarshal it aka JSON.parse()
+	if err != nil {
+		return "", err
+	}
+
+	if currentOwner != vehicleToTransfer.Owner {
+		return "This asset is currently owned by another entity.", err
+	}
+
+	vehicleToTransfer.Owner = newOwner //change the owner
+
+	vehicleJSONBytes, _ := json.Marshal(vehicleToTransfer)
+	err = stub.PutState(IMEINumber, vehicleJSONBytes) //rewrite the vehicle
+	if err != nil {
+		return "", err
+	}
+
+	// maintain indexes
+	ownersIndex := "owner~identifier"
+	// remove previous index
+	err = t.deleteIndex(stub, ownersIndex, []string{currentOwner, chassisNumber})
+	if err != nil {
+		return "", err
+	}
+	// create new index
+	err = t.createIndex(stub, ownersIndex, []string{newOwner, chassisNumber})
+	if err != nil {
+		return "", err
+	}
+
+	return "", nil
+}
+
+
+// ===============================================
+// createIndex - create search index for ledger
+// ===============================================
+func (t *MobileTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
+	fmt.Println("- start create index")
+	var err error
+	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
+	//  An 'index' is a normal key/value entry in state.
+	//  The key is a composite key, with the elements that you want to range query on listed first.
+	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
+	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
+	if err != nil {
+		return err
+	}
+	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of object.
+	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+	value := []byte{0x00}
+	stub.PutState(indexKey, value)
+
+	fmt.Println("- end create index")
+	return nil
+}
+
+// ===============================================
+// deleteIndex - remove search index for ledger
+// ===============================================
+func (t *MobileTraceChaincode) deleteIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
+	fmt.Println("- start delete index")
+	var err error
+	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
+	//  An 'index' is a normal key/value entry in state.
+	//  The key is a composite key, with the elements that you want to range query on listed first.
+	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
+	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
+	if err != nil {
+		return err
+	}
+	//  Delete index by key
+	stub.DelState(indexKey)
+
+	fmt.Println("- end delete index")
+	return nil
 }
 
 // ===========================================================================================
