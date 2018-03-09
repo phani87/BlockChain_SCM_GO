@@ -108,7 +108,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-// AutoTraceChaincode example simple Chaincode implementation
+// MobileTraceChainCode example simple Chaincode implementation
 type MobileTraceChaincode struct {
 }
 
@@ -164,9 +164,9 @@ func (t *MobileTraceChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Respo
 func (t *MobileTraceChaincode) initMobile(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	var err error
 
-	// data model without recall fields
+	// data model
 	//   0       		1      		2     		3			   4		5
-	// "mer1000001", "mercedes", "c class", "1502688979", "ser1234", "mercedes"
+	// "Mobile", "915468752368", "Apple", "IPhone X", "1523654", "Apple Manufacturing Unit, China"
 
 
 	// @MODIFY_HERE extend to expect 8 arguements, up from 6
