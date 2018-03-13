@@ -356,7 +356,7 @@ func (t *MobileTraceChaincode) transferMobile(stub shim.ChaincodeStubInterface, 
 
 	// attempt to get the current vehicle object by serial number.
 	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
-	message, err := t.trannsferMobileHelper(stub, chassisNumber, currentOnwer, newOwner)
+	message, err := t.trannsferMobileHelper(stub, IMEINumber, currentOnwer, newOwner)
 	if err != nil {
 		return shim.Error(message + err.Error())
 	} else if message != "" {
@@ -370,7 +370,7 @@ func (t *MobileTraceChaincode) transferMobile(stub shim.ChaincodeStubInterface, 
 // ===========================================================
 // trannsferVehicleHelper : helper method for transferVehicle
 // ===========================================================
-func (t *MobileTraceChaincode) trannsferMobileHelper(stub shim.ChaincodeStubInterface, chassisNumber string, currentOwner string, newOwner string) (string, error) {
+func (t *MobileTraceChaincode) trannsferMobileHelper(stub shim.ChaincodeStubInterface, IMEINumber string, currentOwner string, newOwner string) (string, error) {
 	// attempt to get the current vehicle object by serial number.
 	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
 	fmt.Println("Transfering vehicle with chassis number: " + IMEINumber + " To: " + newOwner)
@@ -381,7 +381,7 @@ func (t *MobileTraceChaincode) trannsferMobileHelper(stub shim.ChaincodeStubInte
 		return "Vehicle does not exist", err
 	}
 
-	vehicleToTransfer := vehicle{}
+	vehicleToTransfer := mobile{}
 	err = json.Unmarshal(vehicleAsBytes, &vehicleToTransfer) //unmarshal it aka JSON.parse()
 	if err != nil {
 		return "", err
@@ -416,28 +416,28 @@ func (t *MobileTraceChaincode) trannsferMobileHelper(stub shim.ChaincodeStubInte
 }
 
 
-// ===============================================
-// createIndex - create search index for ledger
-// ===============================================
-func (t *MobileTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
-	fmt.Println("- start create index")
-	var err error
-	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
-	//  An 'index' is a normal key/value entry in state.
-	//  The key is a composite key, with the elements that you want to range query on listed first.
-	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
-	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
-	if err != nil {
-		return err
-	}
-	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of object.
-	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
-	value := []byte{0x00}
-	stub.PutState(indexKey, value)
+// // ===============================================
+// // createIndex - create search index for ledger
+// // ===============================================
+// func (t *MobileTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
+// 	fmt.Println("- start create index")
+// 	var err error
+// 	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
+// 	//  An 'index' is a normal key/value entry in state.
+// 	//  The key is a composite key, with the elements that you want to range query on listed first.
+// 	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
+// 	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of object.
+// 	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+// 	value := []byte{0x00}
+// 	stub.PutState(indexKey, value)
 
-	fmt.Println("- end create index")
-	return nil
-}
+// 	fmt.Println("- end create index")
+// 	return nil
+// }
 
 // ===============================================
 // deleteIndex - remove search index for ledger

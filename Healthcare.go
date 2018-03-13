@@ -36,10 +36,10 @@ curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest
 
 # TEST transaction / Add Car
 
-curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest/v1/transaction/invocation -d '{"channel":"channel1","chaincode":"vehiclenet","method":"initVehicle","args":["mer1000001", "mercedes", "c class", "1502688979", "ser1234", "mercedes", "false", "1502688979"],"chaincodeVer":"v1"}'
-curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest/v1/transaction/invocation -d '{"channel":"channel1","chaincode":"vehiclenet","method":"initVehicle","args":["maz1000001", "mazda", "mazda 6", "1502688979", "ser1235", "mazda", "false", "1502688979"],"chaincodeVer":"v1"}'
-curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest/v1/transaction/invocation -d '{"channel":"channel1","chaincode":"vehiclenet","method":"initVehicle","args":["ren1000001", "renault", "megan", "1502688979", "ser1236", "renault", "false", "1502688979"],"chaincodeVer":"v1"}'
-curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest/v1/transaction/invocation -d '{"channel":"channel1","chaincode":"vehiclenet","method":"initVehicle","args":["ford1000001", "ford", "mustang", "1502688979", "ser1237", "ford", "false", "1502688979"],"chaincodeVer":"v1"}'
+curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest/v1/transaction/invocation -d '{"channel":"channel1","chaincode":"vehiclenet","method":"initHealthcare","args":["mer1000001", "mercedes", "c class", "1502688979", "ser1234", "mercedes", "false", "1502688979"],"chaincodeVer":"v1"}'
+curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest/v1/transaction/invocation -d '{"channel":"channel1","chaincode":"vehiclenet","method":"initHealthcare","args":["maz1000001", "mazda", "mazda 6", "1502688979", "ser1235", "mazda", "false", "1502688979"],"chaincodeVer":"v1"}'
+curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest/v1/transaction/invocation -d '{"channel":"channel1","chaincode":"vehiclenet","method":"initHealthcare","args":["ren1000001", "renault", "megan", "1502688979", "ser1236", "renault", "false", "1502688979"],"chaincodeVer":"v1"}'
+curl -H "Content-type:application/json" -X POST http://localhost:3100/bcsgw/rest/v1/transaction/invocation -d '{"channel":"channel1","chaincode":"vehiclenet","method":"initHealthcare","args":["ford1000001", "ford", "mustang", "1502688979", "ser1237", "ford", "false", "1502688979"],"chaincodeVer":"v1"}'
 
 # TEST query / Populated database
 
@@ -94,15 +94,15 @@ go run cryptoHOL.go -v welcome 2346578551081013244845784142988290780925172415550
 package main
 
 import (
-	"bytes"
+	//"bytes"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
-	"strings"
-	"time"
+	//"strings"
+	//"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -114,48 +114,51 @@ type HealthCareChainCode struct {
 
 
 // @MODIFY_HERE add recall fields to vehicle JSON object
-type Doctor struct {
-	ObjectType        string `json:"docType"` 
-	Doctor_id         string `json:"doctor_id"` 
-	Doctor_name       string `json:"doctor_name"`
-	Doctor_speciality string `json:"doctor_speciality"`
-	Doctor_ph_no       int   `json:"doctor_ph_no"`
+// type Doctor struct {
+// 	ObjectType        string `json:"docType"` 
+// 	Doctor_id         string `json:"doctor_id"` 
+// 	Doctor_name       string `json:"doctor_name"`
+// 	Doctor_speciality string `json:"doctor_speciality"`
+// 	Doctor_ph_no       int   `json:"doctor_ph_no"`
 	
-}
+// }
 
-type Diagnostic struct {
-	ObjectType        	string `json:"docType"` 
-	Icd_code         	string `json:"icd_code"` 
-	Diagnostic_desc     string `json:"diagnostic_desc"`
-	Diagnostic_action 	string `json:"diagnostic_action"`	
-}
+// type Diagnostic struct {
+// 	ObjectType        	string `json:"docType"` 
+// 	Icd_code         	string `json:"icd_code"` 
+// 	Diagnostic_desc     string `json:"diagnostic_desc"`
+// 	Diagnostic_action 	string `json:"diagnostic_action"`	
+// }
 
-type Prescription struct {
-	ObjectType        			string `json:"docType"` 
-	Prescription_id         	string `json:"prescription_id"` 
-	Prescription_medName    	string `json:"prescription_medName"`
-	Prescription_instruction 	string `json:"prescription_instruction"`	
-}
+// type Prescription struct {
+// 	ObjectType        			string `json:"docType"` 
+// 	Prescription_id         	string `json:"prescription_id"` 
+// 	Prescription_medName    	string `json:"prescription_medName"`
+// 	Prescription_instruction 	string `json:"prescription_instruction"`	
+// }
 
-type Patient struct {
-	ObjectType        			string `json:"docType"` 
-	Patient_id         			string `json:"patient_id"` 
-	Patient_name       			string `json:"patient_name"`
-	Patient_dob 				string `json:"patient_dob"`
-	Patient_gender 				string `json:"patient_gender"`
-	Patient_weight 				string `json:"patient_weight"`
-	Patient_bp					string `json:"patient_bp"`
-	Patient_body_temp 			string `json:"patient_body_temp"`
-	Patient_ph_no				string `json:"patient_ph_no"`
-	Patient_zip 				string `json:"patient_zip"`
-}
+// type Patient struct {
+// 	ObjectType        			string `json:"docType"` 
+// 	Patient_id         			string `json:"patient_id"` 
+// 	Patient_name       			string `json:"patient_name"`
+// 	Patient_dob 				int `json:"patient_dob"`
+// 	Patient_gender 				string `json:"patient_gender"`
+// 	Patient_weight 				string `json:"patient_weight"`
+// 	Patient_bp					string `json:"patient_bp"`
+// 	Patient_body_temp 			string `json:"patient_body_temp"`
+// 	Patient_ph_no				string `json:"patient_ph_no"`
+// 	Patient_zip 				string `json:"patient_zip"`
+// }
 
 type Visit struct {
-	Visit_id 	string `json:"visit_id"`
-	Doctor 
-	Diagnostic 
-	Prescription
-	Patient 
+	ObjectType     				string `json:"docType"` 
+	Visit_id 					string `json:"visit_id"`
+	Doctor_id   				string `json:"doctor_id"` 
+	Icd_code    				string `json:"icd_code"`  
+	Prescription_id				string `json:"prescription_id"`
+	Prescription_instruction 	string `json:"prescription_instruction"`	 
+	Patient_id      			string `json:"patient_id"` 
+	Visit_date 					int `json:"visit_date"` 
 }
 
 
@@ -183,13 +186,14 @@ func (t *HealthCareChainCode) Invoke(stub shim.ChaincodeStubInterface) pb.Respon
 	fmt.Println("invoke is running " + function)
 
 	// Handle different functions
-	if function == "initMobile" { //create new mobile device
+	if function == "initHealthCare" { //create new mobile device
 		return t.initHealthCare(stub, args)
-	} else if function == "getHistoryForRecord" { //get history of values for a record
-		return t.getHistoryForRecord(stub, args)
-	} else if function == "transferMobile" {
-		return t.transferMobile(stub, args)
 	}
+	// } else if function == "getHistoryForRecord" { //get history of values for a record
+	// 	return t.getHistoryForRecord(stub, args)
+	// } else if function == "transferMobile" {
+	// 	return t.transferMobile(stub, args)
+	// }
 
 	fmt.Println("invoke did not find func: " + function) //error
 	return shim.Error("Received unknown function invocation")
@@ -200,100 +204,83 @@ func (t *HealthCareChainCode) Invoke(stub shim.ChaincodeStubInterface) pb.Respon
 // ============================================================
 func (t *HealthCareChainCode) initHealthCare(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	var err error
-
-	// data model -doctor 
-	//   0       		1      			2     			3			   		
-	// "Dr123456", "Dr. Eddie S", "Cardiologist", "332-334-3336"
-
-	// data model -diagnostic
-	//   0       				1      								2     		
-	// "I11", "Hypertensive heart disease with heart failure", "Surgery Needed"
-
-	// data model -prescription 
-	//   0       		1      		2     		
-	// "rx123456", "Comudin", "daily 1"
-
-	// data model -patient
+	// data visit -patient
 	//   0       		1      		2     		3			4		   5	   6		7			8
 	// "pt123456", "john doe", "1502688979", "male", "171 pounds", "120/75", "98", "335-996-6654", "270358"
 
 
-	// @MODIFY_HERE extend to expect 8 arguements, up from 6
-	if len(args) < 6 {
-		return shim.Error("Incorrect number of arguments. Expecting 7")
+		// Visit_id 				
+		// Doctor_id   			
+		// Icd_code    			
+		// Prescription_id			
+		// Prescription_instruction
+		// Patient_id      		
+		// Visit_date 				
+
+	// @MODIFY_HERE extend to expect 6 arguements, up from 6
+	if len(args) <= 5  {
+		return shim.Error("Incorrect number of arguments. Expecting 6")
 	}
 
 	// ==== Input sanitation ====
-	fmt.Println("- start init vehicle")
+	fmt.Println("- start init healthcare")
 	if len(args[0]) <= 0 {
-		return shim.Error("IMEI Number must be a non-empty string")
+		return shim.Error("Visit ID cannot be empty")
 	}
 	if len(args[1]) <= 0 {
-		return shim.Error("Manufacturer must be a non-empty string")
+		return shim.Error("Doctor id  cannot be empty ")
 	}
 	if len(args[2]) <= 0 {
-		return shim.Error("Model must be a non-empty string")
+		return shim.Error("ICD code cannot be empty ")
+	}
+	if len(args[3]) <= 0 {
+		return shim.Error("Prescription ID cannot be empty")
 	}
 	if len(args[4]) <= 0 {
-		return shim.Error("Assembly Date must be a non-empty string")
+		return shim.Error("Prescription Instruction cannot be empty")
 	}
 	if len(args[5]) <= 0 {
-		return shim.Error("Owner must be a non-empty string")
+		return shim.Error("Patient id cannot be empty")
+	}
+	if len(args[6]) <= 0 {
+		return shim.Error("Visit Date code cannot be empty ")
 	}
 
-	//Set Doctor
+	//Set Init parameters
 
-	Doctor_id 					:= args[0]
-	Doctor_name  				:= args[1]     
-	Doctor_speciality 			:= args[2]
-	Doctor_ph_no 				:= args[3]
-
-	// Set Diagnostic
-	Icd_code         			:= args[4]
-	Diagnostic_desc  			:= args[5]
-	Diagnostic_action			:= args[6]
-
-	//Set Prescription
-	Prescription_id         	:= args[8]
-	Prescription_medName    	:= args[9]
-	Prescription_instruction	:= args[10]
-
-	//Set Patient
-	Patient_id         			:= args[11]
-	Patient_name       			:= args[12]
-	Patient_dob, err 			:= strconv.Atoi(args[13])
+	Visit_id 					:= args[0]
+	Doctor_id 					:= args[1]
+	Icd_code         			:= args[2]
+	Prescription_id         	:= args[3]
+	Prescription_instruction	:= args[4]
+	Patient_id         			:= args[5]
+	Visit_date, err 			:= strconv.Atoi(args[6])
 	if err != nil {
-		return shim.Error("DOB Date must be a numeric string")
+		return shim.Error("Visit Date must be a numeric string")
 	}
 
-	Patient_gender 				:= args[14]
-	Patient_weight 				:= args[15]
-	Patient_bp					:= args[16]
-	Patient_body_temp 			:= args[17]
-	Patient_ph_no				:= args[18]
-	Patient_zip 				:= args[19]
 
-	Visit_id 					:= args[20]
-
-	// ==== Check if doctor already exists ====
-	doctorAsBytes, err := stub.GetState(doctor_id)
+	// ==== Check if Visit already exists ====
+	visitAsBytes, err := stub.GetState(Visit_id)
 	if err != nil {
-		return shim.Error("Failed to get Mobile: " + err.Error())
+		return shim.Error("Failed to get visit : " + err.Error())
 	} else if doctorAsBytes != nil {
-		return shim.Error("This Mobile already exists: " + IMEINumber)
+		return shim.Error("This Visit already exists: " + Visit_id)
 	}
 
-	// ==== Check if patient already exists ====
-	patientAsBytes, err := stub.GetState(patient_id)
-	if err != nil {
-		return shim.Error("Failed to get Mobile: " + err.Error())
-	} else if patientAsBytes != nil {
-		return shim.Error("This Mobile already exists: " + IMEINumber)
-	}
+	// // ==== Check if patient already exists ====
+	// patientAsBytes, err := stub.GetState(patient_id)
+	// if err != nil {
+	// 	return shim.Error("Failed to get Mobile: " + err.Error())
+	// } else if patientAsBytes != nil {
+	// 	return shim.Error("This Mobile already exists: " + IMEINumber)
+	// }
 
 	// ==== Create Visit object and marshal to JSON ====
 
-	v := &Visit{Visit_id, Doctor{"Doctor",Doctor_id,Doctor_name,Doctor_speciality,Doctor_ph_no},Diagnostic{"Diagnostic", Icd_code, Diagnostic_desc, Diagnostic_action},Prescription{"Prescription", Prescription_id,Prescription_medName,Prescription_instruction},Patient{"Patient",Patient_id,Patient_name,Patient_dob,Patient_gender,Patient_weight,Patient_bp, Patient_body_temp,Patient_ph_no,Patient_zip} }
+	objectType := "visit"
+	v := &visit{objectType, Visit_id, Doctor_id, Icd_code, Prescription_id, Prescription_instruction, Patient_id, Visit_date}
+	//v := &Visit{Visit_id, Doctor{"Doctor",Doctor_id,Doctor_name,Doctor_speciality,Doctor_ph_no},Diagnostic{"Diagnostic", Icd_code, Diagnostic_desc, Diagnostic_action},Prescription{"Prescription", Prescription_id,Prescription_medName,Prescription_instruction},Patient{"Patient",Patient_id,Patient_name,Patient_dob,Patient_gender,Patient_weight,Patient_bp, Patient_body_temp,Patient_ph_no,Patient_zip} }
 
 	
 	visitJSONasBytes, err := json.Marshal(v)
@@ -322,7 +309,7 @@ func (t *HealthCareChainCode) initHealthCare(stub shim.ChaincodeStubInterface, a
 		return shim.Error(err.Error())
 	}
 
-	// ==== Vehicle part saved and indexed. Return success ====
+	// ==== Hospital Visit part saved and indexed. Return success ====
 	fmt.Println("- end init Hospital Visit")
 	return shim.Success(nil)
 }
@@ -330,7 +317,7 @@ func (t *HealthCareChainCode) initHealthCare(stub shim.ChaincodeStubInterface, a
 // ===============================================
 // createIndex - create search index for ledger
 // ===============================================
-func (t *MobileTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
+func (t *HealthCareChainCode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
 	fmt.Println("- start create index")
 	var err error
 	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
@@ -350,197 +337,6 @@ func (t *MobileTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, ind
 	return nil
 }
 
-
-// // ===========================================================================================
-// // getHistoryForRecord returns the histotical state transitions for a given key of a record
-// // ===========================================================================================
-func (t *MobileTraceChaincode) getHistoryForRecord(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-
-	if len(args) < 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
-	}
-
-	recordKey := args[0]
-
-	fmt.Printf("- start getHistoryForRecord: %s\n", recordKey)
-
-	resultsIterator, err := stub.GetHistoryForKey(recordKey)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	defer resultsIterator.Close()
-
-	// buffer is a JSON array containing historic values for the key/value pair
-	var buffer bytes.Buffer
-	buffer.WriteString("[")
-
-	bArrayMemberAlreadyWritten := false
-	for resultsIterator.HasNext() {
-		response, err := resultsIterator.Next()
-		if err != nil {
-			return shim.Error(err.Error())
-		}
-		// Add a comma before array members, suppress it for the first array member
-		if bArrayMemberAlreadyWritten == true {
-			buffer.WriteString(",")
-		}
-		buffer.WriteString("{\"TxId\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(response.TxId)
-		buffer.WriteString("\"")
-
-		buffer.WriteString(", \"Value\":")
-		// if it was a delete operation on given key, then we need to set the
-		//corresponding value null. Else, we will write the response.Value
-		//as-is (as the Value itself a JSON vehiclePart)
-		if response.IsDelete {
-			buffer.WriteString("null")
-		} else {
-			buffer.WriteString(string(response.Value))
-		}
-
-		buffer.WriteString(", \"Timestamp\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String())
-		buffer.WriteString("\"")
-
-		buffer.WriteString(", \"IsDelete\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(strconv.FormatBool(response.IsDelete))
-		buffer.WriteString("\"")
-
-		buffer.WriteString("}")
-		bArrayMemberAlreadyWritten = true
-	}
-	buffer.WriteString("]")
-
-	fmt.Printf("- getHistoryForRecord returning:\n%s\n", buffer.String())
-
-	return shim.Success(buffer.Bytes())
-}
-
-// ===========================================================================================
-// Transfer the mobile device from various members in the supply chain
-// ===========================================================================================
-
-
-func (t *MobileTraceChaincode) transferMobile(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-	//   0       1       3
-	// "name", "from", "to"
-	if len(args) < 3 {
-		return shim.Error("Incorrect number of arguments. Expecting 3")
-	}
-
-	IMEINumber := args[0]
-	currentOnwer := strings.ToLower(args[1])
-	newOwner := strings.ToLower(args[2])
-	fmt.Println("- start transferVehicle ", IMEINumber, currentOnwer, newOwner)
-
-	// attempt to get the current vehicle object by serial number.
-	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
-	message, err := t.trannsferMobileHelper(stub, chassisNumber, currentOnwer, newOwner)
-	if err != nil {
-		return shim.Error(message + err.Error())
-	} else if message != "" {
-		return shim.Error(message)
-	}
-
-	fmt.Println("- end transferVehicle (success)")
-	return shim.Success(nil)
-}
-
-// ===========================================================
-// trannsferVehicleHelper : helper method for transferVehicle
-// ===========================================================
-func (t *MobileTraceChaincode) trannsferMobileHelper(stub shim.ChaincodeStubInterface, chassisNumber string, currentOwner string, newOwner string) (string, error) {
-	// attempt to get the current vehicle object by serial number.
-	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
-	fmt.Println("Transfering vehicle with chassis number: " + IMEINumber + " To: " + newOwner)
-	vehicleAsBytes, err := stub.GetState(IMEINumber)
-	if err != nil {
-		return "Failed to get vehicle:", err
-	} else if vehicleAsBytes == nil {
-		return "Vehicle does not exist", err
-	}
-
-	vehicleToTransfer := vehicle{}
-	err = json.Unmarshal(vehicleAsBytes, &vehicleToTransfer) //unmarshal it aka JSON.parse()
-	if err != nil {
-		return "", err
-	}
-
-	if currentOwner != vehicleToTransfer.Owner {
-		return "This asset is currently owned by another entity.", err
-	}
-
-	vehicleToTransfer.Owner = newOwner //change the owner
-
-	vehicleJSONBytes, _ := json.Marshal(vehicleToTransfer)
-	err = stub.PutState(IMEINumber, vehicleJSONBytes) //rewrite the vehicle
-	if err != nil {
-		return "", err
-	}
-
-	// maintain indexes
-	ownersIndex := "owner~identifier"
-	// remove previous index
-	err = t.deleteIndex(stub, ownersIndex, []string{currentOwner, IMEINumber})
-	if err != nil {
-		return "", err
-	}
-	// create new index
-	err = t.createIndex(stub, ownersIndex, []string{newOwner, IMEINumber})
-	if err != nil {
-		return "", err
-	}
-
-	return "", nil
-}
-
-
-// ===============================================
-// createIndex - create search index for ledger
-// ===============================================
-func (t *MobileTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
-	fmt.Println("- start create index")
-	var err error
-	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
-	//  An 'index' is a normal key/value entry in state.
-	//  The key is a composite key, with the elements that you want to range query on listed first.
-	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
-	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
-	if err != nil {
-		return err
-	}
-	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of object.
-	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
-	value := []byte{0x00}
-	stub.PutState(indexKey, value)
-
-	fmt.Println("- end create index")
-	return nil
-}
-
-// ===============================================
-// deleteIndex - remove search index for ledger
-// ===============================================
-func (t *MobileTraceChaincode) deleteIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
-	fmt.Println("- start delete index")
-	var err error
-	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
-	//  An 'index' is a normal key/value entry in state.
-	//  The key is a composite key, with the elements that you want to range query on listed first.
-	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
-	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
-	if err != nil {
-		return err
-	}
-	//  Delete index by key
-	stub.DelState(indexKey)
-
-	fmt.Println("- end delete index")
-	return nil
-}
 
 // ===========================================================================================
 // cryptoVerify : Verifies signed message against public key
