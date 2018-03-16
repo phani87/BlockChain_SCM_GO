@@ -112,44 +112,6 @@ import (
 type HealthCareChainCode struct {
 }
 
-
-// @MODIFY_HERE add recall fields to vehicle JSON object
-// type Doctor struct {
-// 	ObjectType        string `json:"docType"` 
-// 	Doctor_id         string `json:"doctor_id"` 
-// 	Doctor_name       string `json:"doctor_name"`
-// 	Doctor_speciality string `json:"doctor_speciality"`
-// 	Doctor_ph_no       int   `json:"doctor_ph_no"`
-	
-// }
-
-// type Diagnostic struct {
-// 	ObjectType        	string `json:"docType"` 
-// 	Icd_code         	string `json:"icd_code"` 
-// 	Diagnostic_desc     string `json:"diagnostic_desc"`
-// 	Diagnostic_action 	string `json:"diagnostic_action"`	
-// }
-
-// type Prescription struct {
-// 	ObjectType        			string `json:"docType"` 
-// 	Prescription_id         	string `json:"prescription_id"` 
-// 	Prescription_medName    	string `json:"prescription_medName"`
-// 	Prescription_instruction 	string `json:"prescription_instruction"`	
-// }
-
-// type Patient struct {
-// 	ObjectType        			string `json:"docType"` 
-// 	Patient_id         			string `json:"patient_id"` 
-// 	Patient_name       			string `json:"patient_name"`
-// 	Patient_dob 				int `json:"patient_dob"`
-// 	Patient_gender 				string `json:"patient_gender"`
-// 	Patient_weight 				string `json:"patient_weight"`
-// 	Patient_bp					string `json:"patient_bp"`
-// 	Patient_body_temp 			string `json:"patient_body_temp"`
-// 	Patient_ph_no				string `json:"patient_ph_no"`
-// 	Patient_zip 				string `json:"patient_zip"`
-// }
-
 type Visit struct {
 	ObjectType     				string `json:"docType"` 
 	Visit_id 					string `json:"visit_id"`
@@ -207,15 +169,7 @@ func (t *HealthCareChainCode) initHealthCare(stub shim.ChaincodeStubInterface, a
 	// data visit -patient
 	//   0       		1      		2     		3			4		   5	   6		7			8
 	// "pt123456", "john doe", "1502688979", "male", "171 pounds", "120/75", "98", "335-996-6654", "270358"
-
-
-		// Visit_id 				
-		// Doctor_id   			
-		// Icd_code    			
-		// Prescription_id			
-		// Prescription_instruction
-		// Patient_id      		
-		// Visit_date 				
+			
 
 	// @MODIFY_HERE extend to expect 6 arguements, up from 6
 	if len(args) <= 5  {
@@ -248,55 +202,46 @@ func (t *HealthCareChainCode) initHealthCare(stub shim.ChaincodeStubInterface, a
 
 	//Set Init parameters
 
-	Visit_id 					:= args[0]
-	Doctor_id 					:= args[1]
-	Icd_code         			:= args[2]
-	Prescription_id         	:= args[3]
-	Prescription_instruction	:= args[4]
-	Patient_id         			:= args[5]
-	Visit_date, err 			:= strconv.Atoi(args[6])
+	visit_id 					:= args[0]
+	doctor_id 					:= args[1]
+	icd_code         			:= args[2]
+	prescription_id         	:= args[3]
+	prescription_instruction	:= args[4]
+	patient_id         			:= args[5]
+	visit_date, err 			:= strconv.Atoi(args[6])
 	if err != nil {
 		return shim.Error("Visit Date must be a numeric string")
 	}
 
 
 	// ==== Check if Visit already exists ====
-	visitAsBytes, err := stub.GetState(Visit_id)
+	visitAsBytes, err := stub.GetState(visit_id)
 	if err != nil {
 		return shim.Error("Failed to get visit : " + err.Error())
-	} else if doctorAsBytes != nil {
-		return shim.Error("This Visit already exists: " + Visit_id)
+	} else if visitAsBytes != nil {
+		return shim.Error("This Visit already exists: " + visit_id)
 	}
-
-	// // ==== Check if patient already exists ====
-	// patientAsBytes, err := stub.GetState(patient_id)
-	// if err != nil {
-	// 	return shim.Error("Failed to get Mobile: " + err.Error())
-	// } else if patientAsBytes != nil {
-	// 	return shim.Error("This Mobile already exists: " + IMEINumber)
-	// }
 
 	// ==== Create Visit object and marshal to JSON ====
 
 	objectType := "visit"
-	v := &visit{objectType, Visit_id, Doctor_id, Icd_code, Prescription_id, Prescription_instruction, Patient_id, Visit_date}
-	//v := &Visit{Visit_id, Doctor{"Doctor",Doctor_id,Doctor_name,Doctor_speciality,Doctor_ph_no},Diagnostic{"Diagnostic", Icd_code, Diagnostic_desc, Diagnostic_action},Prescription{"Prescription", Prescription_id,Prescription_medName,Prescription_instruction},Patient{"Patient",Patient_id,Patient_name,Patient_dob,Patient_gender,Patient_weight,Patient_bp, Patient_body_temp,Patient_ph_no,Patient_zip} }
-
+	v := &Visit{objectType, visit_id, doctor_id, icd_code, prescription_id, prescription_instruction, patient_id, visit_date}
+	
 	
 	visitJSONasBytes, err := json.Marshal(v)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	// === Save mobile to state ===
-	err = stub.PutState(Visit_id, visitJSONasBytes)
+	// === Save visit to state ===
+	err = stub.PutState(visit_id, visitJSONasBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	//  ==== Index the mobile based on the owner
 	//  An 'index' is a normal key/value entry in state.
 	//  The key is a composite key, with the elements that you want to range query on listed first.
-	//  In our case, the composite key is based on indexName~assember~chassisNumber.
+	//  In our case, the composite key is based on indexName~doctor~visit_id.
 	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
 	indexName := "doctor_id~visit_id"
 	ownersIndex := "patient_id~visit_id"
