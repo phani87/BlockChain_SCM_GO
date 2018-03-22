@@ -333,7 +333,7 @@ func (t *AutoTraceChaincode) initVehiclePart(stub shim.ChaincodeStubInterface, a
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-
+-
 	//  ==== Index the vehicle parts to enable assember & owner-based range queries, e.g. return all tata parts ====
 	//  An 'index' is a normal key/value entry in state.
 	//  The key is a composite key, with the elements that you want to range query on listed first.

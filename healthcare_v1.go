@@ -118,8 +118,12 @@ type visit struct {
 	ObjectType         string `json:"docType"` 
 	VisitId         string `json:"visitId"` 
 	DoctorId       string `json:"doctorId"`
+	DoctorName		string `json:"doctorName"`
 	PatientId              string `json:"patientId"`
+	PatientName 		  string `json:"patientName"`
 	RxId      		 string    `json:"rxId"`
+	RxDrugs			string `json:"rxDrugs"`
+	RxInstructions	string `json:"rxInstructions"`
 	VisitDate              int `json:"visitDate"`
 }
 
@@ -154,7 +158,10 @@ func (t *PtntVstTraceChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Resp
 		return t.getVisitByRange(stub, args)
 	} else if function == "queryVisitByDoctor" {
 		return t.queryVisitByDoctor(stub, args)
+	} else if function == "getVisitCompostiteKey" {
+		return t.getVisitCompostiteKey(stub, args)
 	}
+	
 	
 	fmt.Println("invoke did not find func: " + function) //error
 	return shim.Error("Received unknown function invocation")
@@ -183,20 +190,36 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 		return shim.Error("doctor id must be a non-empty string")
 	}
 	if len(args[2]) <= 0 {
-		return shim.Error("patient id must be a non-empty string")
+		return shim.Error("doctor name must be a non-empty string")
 	}
 	if len(args[3]) <= 0 {
-		return shim.Error("rx id must be a non-empty string")
+		return shim.Error("patient id must be a non-empty string")
 	}
 	if len(args[4]) <= 0 {
+		return shim.Error("patient name must be a non-empty string")
+	}
+	if len(args[5]) <= 0 {
+		return shim.Error("rx id must be a non-empty string")
+	}
+	if len(args[6]) <= 0 {
+		return shim.Error("rx drugs must be a non-empty string")
+	}
+	if len(args[7]) <= 0 {
+		return shim.Error("rx instructions must be a non-empty string")
+	}
+	if len(args[8]) <= 0 {
 		return shim.Error("visit date must be a non-empty string")
 	}
 
 	visitId := args[0]
 	doctorId := strings.ToLower(args[1])
-	patientId := strings.ToLower(args[2])
-	rxId := strings.ToLower(args[3])
-	visitDate, err := strconv.Atoi(args[4])
+	doctorName := strings.ToLower(args[2])
+	patientId := strings.ToLower(args[3])
+	patientName := strings.ToLower(args[4])
+	rxId := strings.ToLower(args[5])
+	rxDrugs := strings.ToLower(args[6])
+	rxInstructions := strings.ToLower(args[7])
+	visitDate, err := strconv.Atoi(args[8])
 	if err != nil {
 		return shim.Error("visit Date must be a numeric string")
 	}
@@ -214,7 +237,7 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	// ==== Create vehicle object and marshal to JSON ====
 	objectType := "visit"
 	
-	visit := &visit{objectType, visitId, doctorId, patientId, rxId, visitDate}
+	visit := &visit{objectType, visitId, doctorId, doctorName, patientId, patientName, rxId, rxDrugs, rxInstructions, visitDate}
 	visitJSONasBytes, err := json.Marshal(visit)
 	if err != nil {
 		return shim.Error(err.Error())
@@ -230,55 +253,66 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	//  The key is a composite key, with the elements that you want to range query on listed first.
 	//  In our case, the composite key is based on indexName~assember~chassisNumber.
 	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
-	visitIndexbyDoc := "doctorId~visitId"
-	visitIndexbyPat := "patientId~visitId"
-	docIndexbyVisit := "visitId~doctorId"
-	patIndexbyVisit := "visitId~patientId"
-	err = t.createIndex(stub, visitIndexbyDoc, []string{visit.DoctorId, visit.VisitId})
+	//visitIndexbyDoc := "doctorId~visitId"
+	//visitIndexbyPat := "patientId~visitId"
+	// docIndexbyVisit := "visitId~doctorId"
+	// patIndexbyVisit := "visitId~patientId"
+	// err = t.createIndex(stub, visitIndexbyDoc, []string{visit.DoctorId, visit.VisitId})
+	// if err != nil {
+	// 	return shim.Error(err.Error())
+	// }
+	// err = t.createIndex(stub, visitIndexbyPat, []string{visit.PatientId, visit.VisitId})
+	// if err != nil {
+	// 	return shim.Error(err.Error())
+	// }
+	// err = t.createIndex(stub, docIndexbyVisit, []string{visit.VisitId, visit.DoctorId})
+	// if err != nil {
+	// 	return shim.Error(err.Error())
+	// }
+	// err = t.createIndex(stub, patIndexbyVisit, []string{visit.VisitId, visit.PatientId})
+	// if err != nil {
+	// 	return shim.Error(err.Error())
+	// }
+
+	indexName := "doctor~visit~patient"
+	DocPatViIndexKey, err := stub.CreateCompositeKey(indexName, []string{visit.DoctorId, visit.VisitId, visit.PatientId})
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = t.createIndex(stub, visitIndexbyPat, []string{visit.PatientId, visit.VisitId})
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	err = t.createIndex(stub, docIndexbyVisit, []string{visit.VisitId, visit.DoctorId})
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	err = t.createIndex(stub, patIndexbyVisit, []string{visit.VisitId, visit.PatientId})
-	if err != nil {
-		return shim.Error(err.Error())
-	}
+	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
+	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+	value := []byte{0x00}
+	stub.PutState(DocPatViIndexKey, value)
+
 	// ==== Vehicle part saved and indexed. Return success ====
 	fmt.Println("- end init vehicle")
 	return shim.Success(nil)
 }
 
-// ===============================================
-// createIndex - create search index for ledger
-// ===============================================
-func (t *PtntVstTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
-	fmt.Println("- start create index")
-	var err error
-	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
-	//  An 'index' is a normal key/value entry in state.
-	//  The key is a composite key, with the elements that you want to range query on listed first.
-	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
-	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
-	if err != nil {
-		return err
-	}
-	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of object.
-	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
-	value := []byte{0x00}
-	stub.PutState(indexKey, value)
+// // ===============================================
+// // createIndex - create search index for ledger
+// // ===============================================
+// func (t *PtntVstTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
+// 	fmt.Println("- start create index")
+// 	var err error
+// 	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
+// 	//  An 'index' is a normal key/value entry in state.
+// 	//  The key is a composite key, with the elements that you want to range query on listed first.
+// 	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
+// 	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of object.
+// 	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+// 	value := []byte{0x00}
+// 	stub.PutState(indexKey, value)
 
-	fmt.Println("- end create index")
-	return nil
-}
+// 	fmt.Println("- end create index")
+// 	return nil
+// }
 
-
+  
 // // ===========================================================================================
 // // getHistoryForRecord returns the histotical state transitions for a given key of a record
 // // ===========================================================================================
@@ -388,6 +422,74 @@ func (t *PtntVstTraceChaincode) getVisitByRange(stub shim.ChaincodeStubInterface
 		buffer.WriteString(", \"Record\":")
 		// Record is a JSON object, so we write as-is
 		buffer.WriteString(string(queryResponse.Value))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- getVehiclePartByRange queryResult:\n%s\n", buffer.String())
+
+	return shim.Success(buffer.Bytes())
+}
+
+func (t *PtntVstTraceChaincode) getVisitCompostiteKey(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+	if len(args) < 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	docId := args[0]
+	
+	resultsIterator, err := stub.GetStateByPartialCompositeKey("doctor~visit~patient", []string{docId})
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryResults
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		objectType, compositeKeyParts, err := stub.SplitCompositeKey(queryResponse.Key)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		returnedDocId := compositeKeyParts[0]
+		returnedVisitId := compositeKeyParts[1]
+		returnedPatientId := compositeKeyParts[1]
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"docId\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(string(returnedDocId))
+		buffer.WriteString("\"")
+
+		buffer.WriteString(",\"visitId\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(string(returnedVisitId))
+		buffer.WriteString("\"")
+
+		buffer.WriteString(",\"patientId\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(string(returnedPatientId))
+		buffer.WriteString("\"")
+
+		buffer.WriteString(",\"objectType\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(string(objectType))
+		buffer.WriteString("\"")
+
+		// buffer.WriteString(", \"Record\":")
+		// // Record is a JSON object, so we write as-is
+		// buffer.WriteString(string(queryResponse.Value))
 		buffer.WriteString("}")
 		bArrayMemberAlreadyWritten = true
 	}
