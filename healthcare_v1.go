@@ -156,10 +156,8 @@ func (t *PtntVstTraceChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Resp
 		return t.getHistoryForRecord(stub, args)
 	} else if function == "getVisitByRange" { //get history of values for a record
 		return t.getVisitByRange(stub, args)
-	} else if function == "queryVisitByDoctor" {
-		return t.queryVisitByDoctor(stub, args)
-	} else if function == "getVisitCompostiteKey" {
-		return t.getVisitCompostiteKey(stub, args)
+	} else if function == "getVisitByDocCompostiteKey" {
+		return t.getVisitByDocCompostiteKey(stub, args)
 	}
 	
 	
@@ -251,28 +249,9 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	//  ==== Index the mobile based on the owner
 	//  An 'index' is a normal key/value entry in state.
 	//  The key is a composite key, with the elements that you want to range query on listed first.
-	//  In our case, the composite key is based on indexName~assember~chassisNumber.
+	//  In our case, the composite key is based on doctorId~visitId~patientId.
 	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
-	//visitIndexbyDoc := "doctorId~visitId"
-	//visitIndexbyPat := "patientId~visitId"
-	// docIndexbyVisit := "visitId~doctorId"
-	// patIndexbyVisit := "visitId~patientId"
-	// err = t.createIndex(stub, visitIndexbyDoc, []string{visit.DoctorId, visit.VisitId})
-	// if err != nil {
-	// 	return shim.Error(err.Error())
-	// }
-	// err = t.createIndex(stub, visitIndexbyPat, []string{visit.PatientId, visit.VisitId})
-	// if err != nil {
-	// 	return shim.Error(err.Error())
-	// }
-	// err = t.createIndex(stub, docIndexbyVisit, []string{visit.VisitId, visit.DoctorId})
-	// if err != nil {
-	// 	return shim.Error(err.Error())
-	// }
-	// err = t.createIndex(stub, patIndexbyVisit, []string{visit.VisitId, visit.PatientId})
-	// if err != nil {
-	// 	return shim.Error(err.Error())
-	// }
+	
 
 	indexName := "doctor~visit~patient"
 	DocPatViIndexKey, err := stub.CreateCompositeKey(indexName, []string{visit.DoctorId, visit.VisitId, visit.PatientId})
@@ -288,29 +267,6 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	fmt.Println("- end init vehicle")
 	return shim.Success(nil)
 }
-
-// // ===============================================
-// // createIndex - create search index for ledger
-// // ===============================================
-// func (t *PtntVstTraceChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
-// 	fmt.Println("- start create index")
-// 	var err error
-// 	//  ==== Index the object to enable range queries, e.g. return all parts made by supplier b ====
-// 	//  An 'index' is a normal key/value entry in state.
-// 	//  The key is a composite key, with the elements that you want to range query on listed first.
-// 	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
-// 	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of object.
-// 	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
-// 	value := []byte{0x00}
-// 	stub.PutState(indexKey, value)
-
-// 	fmt.Println("- end create index")
-// 	return nil
-// }
 
   
 // // ===========================================================================================
@@ -382,7 +338,7 @@ func (t *PtntVstTraceChaincode) getHistoryForRecord(stub shim.ChaincodeStubInter
 }
 
 //============================================================================================
-//Get Visit by range
+//Get Visit by range, returns all the visit under a particular range of visits
 //============================================================================================
 
 func (t *PtntVstTraceChaincode) getVisitByRange(stub shim.ChaincodeStubInterface, args []string) pb.Response {
@@ -432,7 +388,12 @@ func (t *PtntVstTraceChaincode) getVisitByRange(stub shim.ChaincodeStubInterface
 	return shim.Success(buffer.Bytes())
 }
 
-func (t *PtntVstTraceChaincode) getVisitCompostiteKey(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+//============================================================================================
+// Searches based on the composite key and returns all the Visits based on a particular Doctor ID
+// Work around in case, couchDB cannot be configured
+//============================================================================================
+
+func (t *PtntVstTraceChaincode) getVisitByDocCompostiteKey(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
 	if len(args) < 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
@@ -462,7 +423,7 @@ func (t *PtntVstTraceChaincode) getVisitCompostiteKey(stub shim.ChaincodeStubInt
 		}
 		returnedDocId := compositeKeyParts[0]
 		returnedVisitId := compositeKeyParts[1]
-		returnedPatientId := compositeKeyParts[1]
+		returnedPatientId := compositeKeyParts[2]
 		// Add a comma before array members, suppress it for the first array member
 		if bArrayMemberAlreadyWritten == true {
 			buffer.WriteString(",")
@@ -501,7 +462,7 @@ func (t *PtntVstTraceChaincode) getVisitCompostiteKey(stub shim.ChaincodeStubInt
 }
 
 // ===========================================================================================
-// Query Based results
+// Query Based results - can be only implemented if CouchDB is configured
 // ===========================================================================================
 
 func (t *PtntVstTraceChaincode) queryVisitByDoctor(stub shim.ChaincodeStubInterface, args []string) pb.Response {
