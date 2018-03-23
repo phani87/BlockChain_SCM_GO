@@ -1,0 +1,40 @@
+
+// @MODIFY_HERE add recall fields to vehicle JSON object
+// type Doctor struct {
+// 	ObjectType        string `json:"docType"` 
+// 	Doctor_id         string `json:"doctor_id"` 
+// 	Doctor_name       string `json:"doctor_name"`
+// 	Doctor_speciality string `json:"doctor_speciality"`
+// 	Doctor_ph_no       int   `json:"doctor_ph_no"`
+	
+// }
+
+// type Diagnostic struct {
+// 	ObjectType        	string `json:"docType"` 
+// 	Icd_code         	string `json:"icd_code"` 
+// 	Diagnostic_desc     string `json:"diagnostic_desc"`
+// 	Diagnostic_action 	string `json:"diagnostic_action"`	
+// }
+
+// type Prescription struct {
+// 	ObjectType        			string `json:"docType"` 
+// 	Prescription_id         	string `json:"prescription_id"` 
+// 	Prescription_medName    	string `json:"prescription_medName"`
+// 	Prescription_instruction 	string `json:"prescription_instruction"`	
+// }
+
+// type Patient struct {
+// 	ObjectType        			string `json:"docType"` 
+// 	Patient_id         			string `json:"patient_id"` 
+// 	Patient_name       			string `json:"patient_name"`
+// 	Patient_dob 				int `json:"patient_dob"`
+// 	Patient_gender 				string `json:"patient_gender"`
+// 	Patient_weight 				string `json:"patient_weight"`
+// 	Patient_bp					string `json:"patient_bp"`
+// 	Patient_body_temp 			string `json:"patient_body_temp"`
+// 	Patient_ph_no				string `json:"patient_ph_no"`
+// 	Patient_zip 				string `json:"patient_zip"`
+// }
+
+
+//v := &Visit{Visit_id, Doctor{"Doctor",Doctor_id,Doctor_name,Doctor_speciality,Doctor_ph_no},Diagnostic{"Diagnostic", Icd_code, Diagnostic_desc, Diagnostic_action},Prescription{"Prescription", Prescription_id,Prescription_medName,Prescription_instruction},Patient{"Patient",Patient_id,Patient_name,Patient_dob,Patient_gender,Patient_weight,Patient_bp, Patient_body_temp,Patient_ph_no,Patient_zip} }

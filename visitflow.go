@@ -115,17 +115,20 @@ type PtntVstTraceChaincode struct {
 
 // @MODIFY_HERE add recall fields to vehicle JSON object
 type visit struct {
-	ObjectType         string `json:"docType"` 
-	VisitId         string `json:"visitId"` 
-	DoctorId       string `json:"doctorId"`
-	DoctorName		string `json:"doctorName"`
-	PatientId              string `json:"patientId"`
-	PatientName 		  string `json:"patientName"`
-	RxId      		 string    `json:"rxId"`
-	RxDrugs			string `json:"rxDrugs"`
-	RxInstructions	string `json:"rxInstructions"`
-	VisitDate              int `json:"visitDate"`
-}
+	ObjectType         	string `json:"docType"` 
+	VisitId         	string `json:"visitId"` 
+	DoctorId        	string `json:"doctorId"`
+	DoctorName			string `json:"doctorName"`
+	DoctorCoPay 		string `json:"doctorCoPay"`
+	PatientId           string `json:"patientId"`
+	PatientName 		string `json:"patientName"`
+	RxId      		 	string `json:"rxId"`
+	RxDrugs				string `json:"rxDrugs"`
+	RxInstructions		string `json:"rxInstructions"`
+	RxCoPay				string `json:"rxCoPay`
+	InsId				string `json:"insId"`
+	VisitDate           int    `json:"visitDate"`
+} 
 
 // ===================================================================================
 // Main
@@ -158,6 +161,8 @@ func (t *PtntVstTraceChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Resp
 		return t.getVisitByRange(stub, args)
 	} else if function == "getVisitByDocCompostiteKey" {
 		return t.getVisitByDocCompostiteKey(stub, args)
+	}else if function == "updateDocCoPay" {
+		return t.updateDocCoPay(stub, args)
 	}
 	
 	
@@ -206,6 +211,9 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 		return shim.Error("rx instructions must be a non-empty string")
 	}
 	if len(args[8]) <= 0 {
+		return shim.Error("insurance Id must be a non-empty string")
+	}
+	if len(args[8]) <= 0 {
 		return shim.Error("visit date must be a non-empty string")
 	}
 
@@ -217,11 +225,15 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	rxId := strings.ToLower(args[5])
 	rxDrugs := strings.ToLower(args[6])
 	rxInstructions := strings.ToLower(args[7])
-	visitDate, err := strconv.Atoi(args[8])
+	insId := strings.ToLower(args[8])
+	visitDate, err := strconv.Atoi(args[9])
 	if err != nil {
 		return shim.Error("visit Date must be a numeric string")
 	}
 	
+	doctorCoPay := ""
+	rxCoPay := ""
+
 
 	// ==== Check if visit already exists ====
 	visitAsBytes, err := stub.GetState(visitId)
@@ -232,10 +244,10 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	}
 
 	// @MODIFY_HERE parts recall fields
-	// ==== Create vehicle object and marshal to JSON ====
+	// ==== Create vist  and marshal to JSON ====
 	objectType := "visit"
 	
-	visit := &visit{objectType, visitId, doctorId, doctorName, patientId, patientName, rxId, rxDrugs, rxInstructions, visitDate}
+	visit := &visit{objectType, visitId, doctorId, doctorName, doctorCoPay, patientId, patientName, rxId, rxDrugs, rxInstructions, rxCoPay, insId, visitDate}
 	visitJSONasBytes, err := json.Marshal(visit)
 	if err != nil {
 		return shim.Error(err.Error())
@@ -250,7 +262,7 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	//  An 'index' is a normal key/value entry in state.
 	//  The key is a composite key, with the elements that you want to range query on listed first.
 	//  In our case, the composite key is based on doctorId~visitId~patientId.
-	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
+	//  This will enable very efficient state range queries based on composite keys matching doctorId~visitId~patientId~*
 	
 
 	indexName := "doctor~visit~patient"
@@ -335,6 +347,71 @@ func (t *PtntVstTraceChaincode) getHistoryForRecord(stub shim.ChaincodeStubInter
 	fmt.Printf("- getHistoryForRecord returning:\n%s\n", buffer.String())
 
 	return shim.Success(buffer.Bytes())
+}
+
+func (t *PtntVstTraceChaincode) updateDocCoPay(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var jsonResp string
+	if len(args) < 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	visitId := args[0]
+	docCoPay := strings.ToLower(args[1])
+	
+	// attempt to get the current vehiclePart object by serial number.
+	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
+	fmt.Println("Transfering part with serial number: " + visitId + " To: " + docCoPay)
+	visitAsBytes, err := stub.GetState(visitId)
+	if err != nil {
+		return shim.Error("Failed to get visit: " + err.Error())
+	} else if visitAsBytes == nil {
+		return shim.Error("This visit already exists: " + visitId)
+	}
+
+	updateDocCoPay := visit{}
+	err = json.Unmarshal(visitAsBytes, &updateDocCoPay) //unmarshal it aka JSON.parse()
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	if updateDocCoPay.DoctorCoPay != "" {
+		jsonResp = "{\"Error\":\"Doctor Copay has been paid for " + visitId + "\"}"
+		fmt.Println(jsonResp)
+		return shim.Error(jsonResp)
+	}
+
+	updateDocCoPay.DoctorCoPay = docCoPay //change the owner
+
+	visitJSONasBytes, _ := json.Marshal(updateDocCoPay)
+	err = stub.PutState(visitId, visitJSONasBytes) //rewrite the vehiclePart
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	
+	// indexName := "doctor~visit~patient"
+	// DocPatViIndexKey, err := stub.CreateCompositeKey(indexName, []string{visit.DoctorId, visit.VisitId, visit.PatientId})
+	// if err != nil {
+	// 	return shim.Error(err.Error())
+	// }
+	// //  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
+	// //  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+	
+
+	// // maintain indexes
+	// ownersIndex := "owner~identifier"
+	// // remove previous index
+	// err = t.deleteIndex(stub, indexName, []string{currentOwner, serialNumber})
+	// if err != nil {
+	// 	return "", err
+	// }
+	// // create new index
+	// err = t.createIndex(stub, ownersIndex, []string{newOwner, serialNumber})
+	// if err != nil {
+	// 	return "", err
+	// }
+
+	return shim.Success(nil)
 }
 
 //============================================================================================
