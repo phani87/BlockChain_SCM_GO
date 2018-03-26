@@ -119,12 +119,16 @@ type visit struct {
 	VisitId         	string `json:"visitId"` 
 	DoctorId        	string `json:"doctorId"`
 	DoctorName			string `json:"doctorName"`
+	DoctorTotBill		string `json:"doctorTotBill"`
+	DoctorInsPay		string `json:"doctorInsPay"`
 	DoctorCoPay 		string `json:"doctorCoPay"`
 	PatientId           string `json:"patientId"`
 	PatientName 		string `json:"patientName"`
 	RxId      		 	string `json:"rxId"`
 	RxDrugs				string `json:"rxDrugs"`
 	RxInstructions		string `json:"rxInstructions"`
+	RxTotBill			string `json:"rxTotBill"`
+	RxInsPay			string `json:"rxInsBill"`
 	RxCoPay				string `json:"rxCoPay`
 	InsId				string `json:"insId"`
 	VisitDate           int    `json:"visitDate"`
@@ -163,6 +167,8 @@ func (t *PtntVstTraceChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Resp
 		return t.getVisitByDocCompostiteKey(stub, args)
 	}else if function == "updateDocCoPay" {
 		return t.updateDocCoPay(stub, args)
+	}else if function == "updatePharmaCoPay" {
+		return t.updatePharmaCoPay(stub, args)
 	}
 	
 	
@@ -231,8 +237,13 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 		return shim.Error("visit Date must be a numeric string")
 	}
 	
+	doctorTotBill := ""
+	doctorInsPay := ""	
 	doctorCoPay := ""
-	rxCoPay := ""
+ 	rxTotBill := ""		
+	rxInsPay := ""
+	rxCoPay := ""		
+				
 
 
 	// ==== Check if visit already exists ====
@@ -247,7 +258,7 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	// ==== Create vist  and marshal to JSON ====
 	objectType := "visit"
 	
-	visit := &visit{objectType, visitId, doctorId, doctorName, doctorCoPay, patientId, patientName, rxId, rxDrugs, rxInstructions, rxCoPay, insId, visitDate}
+	visit := &visit{objectType, visitId, doctorId, doctorName, doctorTotBill, docInsPay, doctorCoPay, patientId, patientName, rxId, rxDrugs, rxInstructions, rxTotBill, rxInsPay, rxCoPay, insId, visitDate}
 	visitJSONasBytes, err := json.Marshal(visit)
 	if err != nil {
 		return shim.Error(err.Error())
@@ -356,11 +367,14 @@ func (t *PtntVstTraceChaincode) updateDocCoPay(stub shim.ChaincodeStubInterface,
 	}
 
 	visitId := args[0]
-	docCoPay := strings.ToLower(args[1])
+	doctorTotBill := strings.ToLower(args[1])
+	doctorInsPay := strings.ToLower(args[2])
+	doctorCoPay := strings.ToLower(args[3])
+	//rxCoPay := ""
 	
 	// attempt to get the current vehiclePart object by serial number.
 	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
-	fmt.Println("Transfering part with serial number: " + visitId + " To: " + docCoPay)
+	fmt.Println("Updating visit with Doctor co-pay details for: " + visitId + " With co-pay amount: " + docCoPay)
 	visitAsBytes, err := stub.GetState(visitId)
 	if err != nil {
 		return shim.Error("Failed to get visit: " + err.Error())
@@ -380,36 +394,61 @@ func (t *PtntVstTraceChaincode) updateDocCoPay(stub shim.ChaincodeStubInterface,
 		return shim.Error(jsonResp)
 	}
 
-	updateDocCoPay.DoctorCoPay = docCoPay //change the owner
-
+	
+	updateDocCoPay.DoctorTotBill = doctorTotBill
+	updateDocCoPay.DoctorInsPay = doctorInsPay
+	updateDocCoPay.DoctorCoPay = doctorCoPay 
 	visitJSONasBytes, _ := json.Marshal(updateDocCoPay)
-	err = stub.PutState(visitId, visitJSONasBytes) //rewrite the vehiclePart
+	err = stub.PutState(visitId, visitJSONasBytes) //rewrite the visit with doctor insurance coverage
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	
-	// indexName := "doctor~visit~patient"
-	// DocPatViIndexKey, err := stub.CreateCompositeKey(indexName, []string{visit.DoctorId, visit.VisitId, visit.PatientId})
-	// if err != nil {
-	// 	return shim.Error(err.Error())
-	// }
-	// //  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
-	// //  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
-	
+	return shim.Success(nil)
+}
 
-	// // maintain indexes
-	// ownersIndex := "owner~identifier"
-	// // remove previous index
-	// err = t.deleteIndex(stub, indexName, []string{currentOwner, serialNumber})
-	// if err != nil {
-	// 	return "", err
-	// }
-	// // create new index
-	// err = t.createIndex(stub, ownersIndex, []string{newOwner, serialNumber})
-	// if err != nil {
-	// 	return "", err
-	// }
+func (t *PtntVstTraceChaincode) updatePharmaCoPay(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var jsonResp string
+	if len(args) < 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	visitId := args[0]
+	rxTotBill := strings.ToLower(args[1])
+	rxInsPay := strings.ToLower(args[2])
+	rxCoPay := strings.ToLower(args[3])
+	
+	// attempt to get the current vehiclePart object by serial number.
+	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
+	fmt.Println("Updating visit with Pharmacist co-pay details for: " + visitId + " With co-pay amount: " + rxCoPay)
+	visitAsBytes, err := stub.GetState(visitId)
+	if err != nil {
+		return shim.Error("Failed to get visit: " + err.Error())
+	} else if visitAsBytes == nil {
+		return shim.Error("This visit already exists: " + visitId)
+	}
+
+	updatePharmaCoPay := visit{}
+	err = json.Unmarshal(visitAsBytes, &updatePharmaCoPay) //unmarshal it aka JSON.parse()
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	if updatePharmaCoPay.RxCoPay != "" {
+		jsonResp = "{\"Error\":\"Pharmacist Copay has been paid for " + visitId + "\"}"
+		fmt.Println(jsonResp)
+		return shim.Error(jsonResp)
+	}
+
+	updatePharmaCoPay.RxTotBill = rxTotBill 
+	updatePharmaCoPay.RxInsPay = rxInsPay
+	updatePharmaCoPay.RxCoPay = rxCoPay 
+
+	visitJSONasBytes, _ := json.Marshal(updatePharmaCoPay)
+	err = stub.PutState(visitId, visitJSONasBytes) //rewrite visit with Pharmacy bill details
+	if err != nil {
+		return shim.Error(err.Error())
+	}
 
 	return shim.Success(nil)
 }
