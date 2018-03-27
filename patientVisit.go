@@ -157,7 +157,7 @@ type prescription struct {
 	InsId				string `json:"insId"`
 	DoctorId        	string `json:"doctorId"`
 	DoctorName			string `json:"doctorName"`
-	PatientId           string 	`json:"patientId"`
+	PatientId           string `json:"patientId"`
 	RxDate				int	   `json:"rxDate"`
 }
 
@@ -207,6 +207,8 @@ func (t *PtntVstTraceChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Resp
 		return t.getHistoryForRecord(stub, args)
 	} else if function == "getCompostiteKey" { //get history of values for a record
 		return t.getCompostiteKey(stub, args)
+	} else if function == "updatePayments" { //get history of values for a record
+		return t.updatePayments(stub, args)
 	}
 	
 	fmt.Println("invoke did not find func: " + function) //error
@@ -286,15 +288,15 @@ func (t *PtntVstTraceChaincode) initPatient(stub shim.ChaincodeStubInterface, ar
 	//  In our case, the composite key is based on patient~details
 	//  This will enable very efficient state range queries based on composite keys matching patient~details~*
 
-	// patientIndex := "patient~details"
-	// patientIndexKey, err := stub.CreateCompositeKey(patientIndex, []string{patient.PatientId, patient.PatientFirstName, patient.PatientLastName})
-	// if err != nil {
-	// 	return shim.Error(err.Error())
-	// }
-	// //  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
-	// //  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
-	// value := []byte{0x00}
-	// stub.PutState(patientIndexKey, value)
+	patientIndex := "patient~details"
+	patientIndexKey, err := stub.CreateCompositeKey(patientIndex, []string{patient.PatientId, patient.PatientFirstName, patient.PatientLastName})
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
+	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+	value := []byte{0x00}
+	stub.PutState(patientIndexKey, value)
 
 	// ==== Visit part saved and indexed. Return success ====
 	fmt.Println("- end init Visit")
@@ -326,15 +328,12 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 		return shim.Error("doctor name must be a non-empty string")
 	}
 	if len(args[3]) <= 0 {
-		return shim.Error("doctor total bill  must be a non-empty string")
-	}
-	if len(args[4]) <= 0 {
 		return shim.Error("patient id must be a non-empty string")
 	}
-	if len(args[5]) <= 0 {
+	if len(args[4]) <= 0 {
 		return shim.Error("visit notes be a non-empty string")
 	}
-	if len(args[6]) <= 0 {
+	if len(args[5]) <= 0 {
 		return shim.Error("visit date be a non-empty string")
 	}
 	
@@ -353,11 +352,19 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	doctorCoPay			:= ""
 
 	// ==== Check if patient already exists ====
-	visitAsBytes, err := stub.GetState(patientId)
+	patientValidityBytes, err := stub.GetState(patientId)
+	if err != nil {
+		return shim.Error("Failed to get Patient:" +err.Error())
+	}else if patientValidityBytes == nil {
+		return shim.Error("Patient does not exist")
+	}
+
+	// ==== Check if visit already exists ====
+	visitAsBytes, err := stub.GetState(visitId)
 	if err != nil {
 		return shim.Error("Failed to get Visit: " + err.Error())
 	} else if visitAsBytes != nil {
-		return shim.Error("This patient already exists: " + patientId)
+		return shim.Error("This visit already exists: " + visitId)
 	}
 
 	// @MODIFY_HERE parts recall fields
@@ -368,13 +375,17 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	visitJSONasBytes, err := json.Marshal(visit)
 	if err != nil {
 		return shim.Error(err.Error())
-	}
+	} 
 
 	// === Save mobile to state ===
 	err = stub.PutState(visitId, visitJSONasBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
+
+	
+	
+		
 	//  ==== Index the mobile based on the owner
 	//  An 'index' is a normal key/value entry in state.
 	//  The key is a composite key, with the elements that you want to range query on listed first.
@@ -382,7 +393,7 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	//  This will enable very efficient state range queries based on composite keys matching patient~details~*
 
 	visitIndex := "patient~visit~doctor"
-	visitIndexKey, err := stub.CreateCompositeKey(visitIndex, []string{visit.PatientId, visit.VisitId, visitId.DoctorId})
+	visitIndexKey, err := stub.CreateCompositeKey(visitIndex, []string{visit.PatientId, visit.VisitId, visit.DoctorId})
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -392,8 +403,9 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	stub.PutState(visitIndexKey, value)
 
 	// ==== Visit part saved and indexed. Return success ====
+	responsePayload := fmt.Sprintf("visit created with %s and the patient is valid", visitId)
 	fmt.Println("- end init Visit")
-	return shim.Success(nil)
+	return shim.Success([]byte(responsePayload))
 }
 
 
@@ -413,25 +425,25 @@ func (t *PtntVstTraceChaincode) initPrescription(stub shim.ChaincodeStubInterfac
 	fmt.Println("- start init vehicle")
 
 	if len(args[0]) <= 0 {
-		return shim.Error("visit id must be a non-empty string")
+		return shim.Error("rx id must be a non-empty string")
 	}
 	if len(args[1]) <= 0 {
-		return shim.Error("doctor id must be a non-empty string")
+		return shim.Error("rx drugs must be a non-empty string")
 	}
 	if len(args[2]) <= 0 {
-		return shim.Error("doctor name must be a non-empty string")
+		return shim.Error("ins id must be a non-empty string")
 	}
 	if len(args[3]) <= 0 {
-		return shim.Error("doctor total bill  must be a non-empty string")
+		return shim.Error("doctor id  must be a non-empty string")
 	}
 	if len(args[4]) <= 0 {
-		return shim.Error("patient id must be a non-empty string")
+		return shim.Error("doctor name id must be a non-empty string")
 	}
 	if len(args[5]) <= 0 {
-		return shim.Error("visit notes be a non-empty string")
+		return shim.Error("patient id be a non-empty string")
 	}
 	if len(args[6]) <= 0 {
-		return shim.Error("visit date be a non-empty string")
+		return shim.Error("rx date be a non-empty string")
 	}
 	
 	rxId					:=args[0]
@@ -449,6 +461,14 @@ func (t *PtntVstTraceChaincode) initPrescription(stub shim.ChaincodeStubInterfac
 	rxTotBill 		:= ""
 	rxInsBill		:= ""
 	rxCoPay			:= ""
+
+	// ==== Check if patient already exists ====
+	patientValidityBytes, err := stub.GetState(patientId)
+	if err != nil {
+		return shim.Error("Failed to get Patient:" +err.Error())
+	}else if patientValidityBytes == nil {
+		return shim.Error("Patient does not exist")
+	}
 
 	// ==== Check if patient already exists ====
 	prescriptionAsBytes, err := stub.GetState(rxId)
@@ -473,6 +493,8 @@ func (t *PtntVstTraceChaincode) initPrescription(stub shim.ChaincodeStubInterfac
 	if err != nil {
 		return shim.Error(err.Error())
 	}
+
+	
 	//  ==== Index the mobile based on the owner
 	//  An 'index' is a normal key/value entry in state.
 	//  The key is a composite key, with the elements that you want to range query on listed first.
@@ -480,7 +502,7 @@ func (t *PtntVstTraceChaincode) initPrescription(stub shim.ChaincodeStubInterfac
 	//  This will enable very efficient state range queries based on composite keys matching patient~details~*
 
 	visitIndex := "patient~rx~doctor"
-	visitIndexKey, err := stub.CreateCompositeKey(visitIndex, []string{visit.PatientId, visit.RxId, visitId.DoctorId})
+	visitIndexKey, err := stub.CreateCompositeKey(visitIndex, []string{prescription.PatientId, prescription.RxId, prescription.DoctorId})
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -490,8 +512,9 @@ func (t *PtntVstTraceChaincode) initPrescription(stub shim.ChaincodeStubInterfac
 	stub.PutState(visitIndexKey, value)
 
 	// ==== Visit part saved and indexed. Return success ====
+	responsePayload := fmt.Sprintf("prescription created with %s and the patient is valid", rxId)
 	fmt.Println("- end init Visit")
-	return shim.Success(nil)
+	return shim.Success([]byte(responsePayload))
 }
 
 
@@ -640,6 +663,83 @@ func (t *PtntVstTraceChaincode) getCompostiteKey(stub shim.ChaincodeStubInterfac
 }
 
 
+
+//=================================================================================================================================================================================================
+
+//============================================================================================
+// Updating the billing info for the patient for insurance purposes
+//============================================================================================
+
+func (t *PtntVstTraceChaincode) updatePayments(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var jsonResp string
+	if len(args) < 3 {
+		return shim.Error("Incorrect number of arguments. Expecting 5")
+	}
+
+	id := args[0]
+	totalBill := strings.ToLower(args[1])
+	insPay := strings.ToLower(args[2])
+	coPay := strings.ToLower(args[3])
+	types := strings.ToLower(args[4])
+	
+	// attempt to get the current vehiclePart object by serial number.
+	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
+	fmt.Println("Updating visit with payment details for: " + id + " With co-pay amount: " + coPay)
+	datatAsBytes, err := stub.GetState(id)
+	if err != nil {
+		return shim.Error("Failed to get visit: " + err.Error())
+	} else if datatAsBytes == nil {
+		return shim.Error("This Rx/Visit exists: " + id)
+	}
+		
+	if types == "doctor"{
+		updatePaymentsDetails := visit{}
+		err = json.Unmarshal(datatAsBytes, &updatePaymentsDetails) //unmarshal it aka JSON.parse()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		if updatePaymentsDetails.DoctorCoPay != "" {
+			jsonResp = "{\"Error\":\"Doctor Copay has been paid for " + id + "\"}"
+			fmt.Println(jsonResp)
+			return shim.Error(jsonResp)
+		}
+	
+		updatePaymentsDetails.DoctorTotBill = totalBill 
+		updatePaymentsDetails.DoctorInsPay = insPay
+		updatePaymentsDetails.DoctorCoPay = coPay 
+	
+		dataJSONasBytes, _ := json.Marshal(updatePaymentsDetails)
+		err = stub.PutState(id, dataJSONasBytes) //rewrite visit with Pharmacy bill details
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+	} else if types == "rx"{
+		updatePaymentsDetails := prescription{}
+		err = json.Unmarshal(datatAsBytes, &updatePaymentsDetails) //unmarshal it aka JSON.parse()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		if updatePaymentsDetails.RxCoPay != "" {
+			jsonResp = "{\"Error\":\"Pharmacist Copay has been paid for " + id + "\"}"
+			fmt.Println(jsonResp)
+			return shim.Error(jsonResp)
+		}
+	
+		updatePaymentsDetails.RxTotBill = totalBill 
+		updatePaymentsDetails.RxInsPay = insPay
+		updatePaymentsDetails.RxCoPay = coPay 
+	
+		dataJSONasBytes, _ := json.Marshal(updatePaymentsDetails)
+		err = stub.PutState(id, dataJSONasBytes) //rewrite visit with Pharmacy bill details
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+	}
+	
+	return shim.Success(nil)
+}
 
 //=================================================================================================================================================================================================
 
