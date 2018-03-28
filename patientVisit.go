@@ -141,6 +141,7 @@ type patient struct {
 	PatientFirstName 		string 	`json:"patientFirstName"`
 	PatientLastName			string	`json:"patientLastName"`
 	PatientAge				string	`json:"patientAge"`
+	PatientGender 			string 	`json:"patientGender"`
 	PatientBp				string  `json:"patientBp"`
 	PatientDob				int		`json:"patientDob"`
 } 
@@ -155,6 +156,7 @@ type prescription struct {
 	RxInsPay			string `json:"rxInsBill"`
 	RxCoPay				string `json:"rxCoPay`
 	InsId				string `json:"insId"`
+	InsName				string `json:"insName"`
 	DoctorId        	string `json:"doctorId"`
 	DoctorName			string `json:"doctorName"`
 	PatientId           string `json:"patientId"`
@@ -162,7 +164,7 @@ type prescription struct {
 }
 
 type visit struct {
-	ObjectType         	string `json:"docType"`
+	ObjectType         	string 	`json:"docType"`
 	VisitId         	string 	`json:"visitId"` 
 	DoctorId        	string 	`json:"doctorId"`
 	DoctorName			string	`json:"doctorName"`
@@ -171,6 +173,8 @@ type visit struct {
 	DoctorCoPay 		string 	`json:"doctorCoPay"`
 	PatientId           string 	`json:"patientId"`
 	VisitNotes			string 	`json:"visitNotes"`
+	InsId				string 	`json:"insId"`
+	InsName				string 	`json:"insName"`
 	VisitDate           int    	`json:"visitDate"`
 }
 
@@ -222,7 +226,7 @@ func (t *PtntVstTraceChaincode) initPatient(stub shim.ChaincodeStubInterface, ar
 	var err error
 
 	// @MODIFY_HERE extend to expect 5 arguements, up from 6
-	if len(args) < 5 {
+	if len(args) < 6 {
 		return shim.Error("Incorrect number of arguments. Expecting 6")
 	}
 
@@ -242,18 +246,22 @@ func (t *PtntVstTraceChaincode) initPatient(stub shim.ChaincodeStubInterface, ar
 		return shim.Error("patient age must be a non-empty string")
 	}
 	if len(args[4]) <= 0 {
-		return shim.Error("patient BP must be a non-empty string")
+		return shim.Error("patient gender must be a non-empty string")
 	}
 	if len(args[5]) <= 0 {
-		return shim.Error("patient date of birth must be a non-empty string")
+		return shim.Error("patient bp must be a non-empty string")
+	}
+	if len(args[6]) <= 0 {
+		return shim.Error("patient birth year must be a non-empty string")
 	}
 	
 	patientId			:=args[0]
 	patientFirstName	:=strings.ToLower(args[1])
 	patientLastName		:=strings.ToLower(args[2])
 	patientAge			:=strings.ToLower(args[3])
-	patientBp			:=strings.ToLower(args[4])
-	patientDob, err 	:= strconv.Atoi(args[5])
+	patientGender		:=strings.ToLower(args[4])
+	patientBp			:=strings.ToLower(args[5])
+	patientDob, err 	:= strconv.Atoi(args[6])
 	if err != nil {
 		return shim.Error("patient date of birth must be a numeric string")
 	}			
@@ -334,6 +342,12 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 		return shim.Error("visit notes be a non-empty string")
 	}
 	if len(args[5]) <= 0 {
+		return shim.Error("insurance id be a non-empty string")
+	}
+	if len(args[6]) <= 0 {
+		return shim.Error("insurance name be a non-empty string")
+	}
+	if len(args[7]) <= 0 {
 		return shim.Error("visit date be a non-empty string")
 	}
 	
@@ -342,7 +356,9 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	doctorName			:=strings.ToLower(args[2])
 	patientId			:=strings.ToLower(args[3])
 	visitNotes			:=strings.ToLower(args[4])
-	visitDate, err 	:= strconv.Atoi(args[5])
+	insId				:=strings.ToLower(args[5])
+	insName				:=strings.ToLower(args[6])
+	visitDate, err 		:=strconv.Atoi(args[7])
 	if err != nil {
 		return shim.Error("patient date of birth must be a numeric string")
 	}			
@@ -371,7 +387,7 @@ func (t *PtntVstTraceChaincode) initVisit(stub shim.ChaincodeStubInterface, args
 	// ==== Create vist  and marshal to JSON ====
 	objectType := "visit"
 	
-	visit := &visit{objectType, visitId, doctorId, doctorName, doctorTotBill, doctorInsPay, doctorCoPay, patientId, visitNotes, visitDate}
+	visit := &visit{objectType, visitId, doctorId, doctorName, doctorTotBill, doctorInsPay, doctorCoPay, patientId, visitNotes, insId, insName, visitDate}
 	visitJSONasBytes, err := json.Marshal(visit)
 	if err != nil {
 		return shim.Error(err.Error())
@@ -450,10 +466,11 @@ func (t *PtntVstTraceChaincode) initPrescription(stub shim.ChaincodeStubInterfac
 	rxDrugs					:=strings.ToLower(args[1])
 	rxInstructions			:=strings.ToLower(args[2])
 	insId					:=strings.ToLower(args[3])
-	doctorId				:=strings.ToLower(args[4])
-	doctorName				:=strings.ToLower(args[5])
-	patientId				:=strings.ToLower(args[6])
-	rxDate, err 			:= strconv.Atoi(args[7])
+	insName					:=strings.ToLower(args[4])
+	doctorId				:=strings.ToLower(args[5])
+	doctorName				:=strings.ToLower(args[6])
+	patientId				:=strings.ToLower(args[7])
+	rxDate, err 			:=strconv.Atoi(args[8])
 	if err != nil {
 		return shim.Error("patient date of birth must be a numeric string")
 	}			
@@ -482,7 +499,7 @@ func (t *PtntVstTraceChaincode) initPrescription(stub shim.ChaincodeStubInterfac
 	// ==== Create vist  and marshal to JSON ====
 	objectType := "visit"
 	
-	prescription := &prescription{objectType, rxId, rxDrugs, rxInstructions, rxTotBill, rxInsBill, rxCoPay, insId, doctorId, doctorName, patientId, rxDate}
+	prescription := &prescription{objectType, rxId, rxDrugs, rxInstructions, rxTotBill, rxInsBill, rxCoPay, insId, insName, doctorId, doctorName, patientId, rxDate}
 	prescriptionJSONasBytes, err := json.Marshal(prescription)
 	if err != nil {
 		return shim.Error(err.Error())
@@ -741,5 +758,45 @@ func (t *PtntVstTraceChaincode) updatePayments(stub shim.ChaincodeStubInterface,
 	return shim.Success(nil)
 }
 
-//=================================================================================================================================================================================================
+//============================================================================================
+// Updating the notes for a visit
+//============================================================================================
 
+func (t *PtntVstTraceChaincode) addNotesToVisit(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var jsonResp string
+	if len(args) < 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	visitId := args[0]
+	newNotes := strings.ToLower(args[1])
+	
+	
+	// attempt to get the current vehiclePart object by serial number.
+	// if sucessful, returns us a byte array we can then us JSON.parse to unmarshal
+	fmt.Println("Updating visit with notes: " + visitId + " With co-pay amount: " + rxCoPay)
+	visitAsBytes, err := stub.GetState(visitId)
+	if err != nil {
+		return shim.Error("Failed to get visit: " + err.Error())
+	} else if visitAsBytes == nil {
+		return shim.Error("This visit already exists: " + visitId)
+	}
+
+	updatePharmaCoPay := visit{}
+	err = json.Unmarshal(visitAsBytes, &updatePharmaCoPay) //unmarshal it aka JSON.parse()
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	updatePharmaCoPay.VisitNotes = newNotes 
+
+	visitJSONasBytes, _ := json.Marshal(updatePharmaCoPay)
+	err = stub.PutState(visitId, visitJSONasBytes) //rewrite visit with Pharmacy bill details
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
+}
+
+//=================================================================================================================================================================================================
