@@ -6,7 +6,8 @@ It was developed to work for Oracle BCS
 ## About
 
 The chaincode ensure that the product in the supplychain process is a valid product and is verified 
-by both Manufacturer, Supplier, Distributer and end-consumer thus providing a fool-proof Blockchain solution
+by both Manufacturer, Supplier, Distributer and end-consumer thus providing a fool-proof Blockchain solution.
+The chain code is written in <img src=static/download.png height=75 />
 
 
 ## Hyperledger Fabric
